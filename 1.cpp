@@ -43,7 +43,6 @@ for(int files = 0; files < 2; files++){
          }
 
 
-
         tree->GetEvent(i);
 
         evtInfo = eventPack->GetEventInformation();

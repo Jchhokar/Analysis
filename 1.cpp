@@ -1,11 +1,30 @@
 
 using namespace std;
-double  NormalizeTime( JPetGeantScinHits* Hit1 );
-double CalcDistanceOfSurfaceAndZero( JPetGeantScinHits* Hit1, JPetGeantScinHits* Hit2, JPetGeantScinHits* Hit3 );
+
+double CalcDistanceOfSurfaceAndZero( JPetGeantScinHits* Hit1, JPetGeantScinHits* Hit2, JPetGeantScinHits* Hit3 )
+{
+
+    TVector3 vec1 = Hit2->GetHitPosition() - Hit1->GetHitPosition();
+    TVector3 vec2 = Hit3->GetHitPosition() - Hit2->GetHitPosition();
+    TVector3 crossProd  = vec1.Cross(vec2);
+    double Dcoeef = crossProd.Dot(Hit2->GetHitPosition());
+    double distanceFromZero = fabs(Dcoeef) / crossProd.Mag();
+    return distanceFromZero;
+}
+//Hit normalize time
+//
+double  NormalizeTime( JPetGeantScinHits* Hit1 )
+{
+        TVector3 vec1 = Hit1->GetHitPosition();
+        double Length0 = vec1.Mag();
+
+        return Hit1->GetTime()/1000.0 - (Length0)/29.979246;
+}
+
 
 int Analysis(){
-	for(int files = 0; files < 10; files++){
-   	 	TFile input_file(Form("../%i/mcGeant.root", files), "READ");
+	for(int files = 0; files < 1; files++){
+   	 	TFile input_file("mcGeant.root", "READ");
     	//TFile input_file("../mcGeant.root", "READ");
     	TH2D ThetaVsTheta("ThetaVsTheta", "ThetaVsTheta", 210, 0., 210., 210, 0., 210.);
     	TH2D SumVsDiff("SumVsDiff", "SumVsDiff", 250, 0, 250, 180, 0, 180);
@@ -62,8 +81,7 @@ int Analysis(){
         	if(PrimaryHits.size() == 3){
 
            		//random_shuffle(PrimaryHits.begin(), PrimaryHits.end());
-            	sort(PrimaryHits.begin(), PrimaryHits.end(), [](JPetGeantScinHits* lhs, JPetGeantScinHits* rhs)
-              	{return lhs->GetGenGammaIndex() < rhs->GetGenGammaIndex();} );
+            	sort(PrimaryHits.begin(), PrimaryHits.end(), [](JPetGeantScinHits* lhs, JPetGeantScinHits* rhs){return lhs->GetGenGammaIndex() < rhs->GetGenGammaIndex();} );
 
 				double firstPhotonArr = NormalizeTime(PrimaryHits.at(0));      // Time is calculated using time of emmision (TOF correction)
 				double secondPhotonArr= NormalizeTime(PrimaryHits.at(1));
@@ -81,7 +99,7 @@ int Analysis(){
 				sort(thetasOrd.begin(), thetasOrd.end(), [](double lhs, double rhs){return lhs < rhs;} );
 				vector<double> energy{E1, E2, E3};
 
-				if(fabs(PrimaryHits.at(0)->getPosZ())<23. && fabs(PrimaryHits.at(1)->getPosZ())<23. && fabs(PrimaryHits.at(2)->getPosZ())<23.){
+				if(fabs(PrimaryHits.at(0)->GetHitPosition().X())<23. && fabs(PrimaryHits.at(1)->GetHitPosition().X())<23. && fabs(PrimaryHits.at(2)->GetHitPosition().X())<23.){
 
 					if(energy[0]>energy_threshold and energy[1]>energy_threshold and energy[2]>energy_threshold){
 
@@ -110,7 +128,7 @@ int Analysis(){
             PrimaryHits.clear();
       	}
 
-	}
+
 
     input_file.Close();
 	e1.Write();
@@ -123,23 +141,4 @@ int Analysis(){
     cout << counter << endl;
 	}
     return 0;
-}
-double CalcDistanceOfSurfaceAndZero( JPetGeantScinHits* Hit1, JPetGeantScinHits* Hit2, JPetGeantScinHits* Hit3 )
-{
-
-	TVector3 vec1 = Hit2->getHitPosition() - Hit1->getHitPosition();
-	TVector3 vec2 = Hit3->getHitPosition() - Hit2->getHitPosition();
-	TVector3 crossProd  = vec1.Cross(vec2);
-	double Dcoeef = crossProd.Dot(Hit2);
-	double distanceFromZero = fabs(Dcoeef) / crossProd.Mag();
-	return distanceFromZero;
-}
-//Hit normalize time
-//
-double  NormalizeTime( JPetGeantScinHits* Hit1 )
-{
-	    TVector3 vec1 = Hit1->getHitPosition();
-	    double Length0 = vec1.Mag();
-
-	    return Hit1.getTime()/1000.0 - (Length0)/29.979246;
 }

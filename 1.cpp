@@ -1,7 +1,7 @@
 
 using namespace std;
-double  NormalizeTime( double Hit1 );
-double CalcDistanceOfSurfaceAndZero( double Hit1, double Hit2, double Hit3 );
+double  NormalizeTime( JPetGeantScinHits* Hit1 );
+double CalcDistanceOfSurfaceAndZero( JPetGeantScinHits* Hit1, JPetGeantScinHits* Hit2, JPetGeantScinHits* Hit3 );
 
 int Analysis(){
 	for(int files = 0; files < 10; files++){
@@ -19,6 +19,7 @@ int Analysis(){
 
     	double speed_of_light = 0.0299792458; // cm ps^-1
    		double electron_mass = 510.998928; // electron mass in keV
+        double energy_threshold = 0.0;
 
    		JPetGeantEventPack* eventPack = new JPetGeantEventPack();
 		JPetGeantEventInformation* evtInfo = new JPetGeantEventInformation();
@@ -48,8 +49,8 @@ int Analysis(){
        		if(NumberOfHits > 2){        //selection of 3 hits(atleast 3 hits
             	for(int j = 0; j < NumberOfHits; j++){
                 	if(eventPack->GetHit(j)->GetGenGammaMultiplicity() == 3){
-						/*if(abs( (1000*evtInfo->GetMomentumGamma(eventPack->GetHit(j)->GetGenGammaIndex())- eventPack->GetHit(j)-					  
-						  >GetMomentumIn()).Mag() ) < 0.00001){		
+						/*if(abs( (1000*evtInfo->GetMomentumGamma(eventPack->GetHit(j)->GetGenGammaIndex())- eventPack->GetHit(j)-
+						  >GetMomentumIn()).Mag() ) < 0.00001){
                      			cout << eventPack->GetHit(j)->GetGenGammaMultiplicity() << " " << eventPack->GetHit(j)->GetGenGammaIndex() << " " << 									eventPack->GetHit(j)->GetNumOfInteractions() << endl;
 						}*/
                     	PrimaryHits.push_back(eventPack->GetHit(j));
@@ -64,7 +65,7 @@ int Analysis(){
             	sort(PrimaryHits.begin(), PrimaryHits.end(), [](JPetGeantScinHits* lhs, JPetGeantScinHits* rhs)
               	{return lhs->GetGenGammaIndex() < rhs->GetGenGammaIndex();} );
 
-				double firstPhotonArr = NormalizeTime(PrimaryHits.at(0));      // Time is calculated using time of emmision (TOF correction) 
+				double firstPhotonArr = NormalizeTime(PrimaryHits.at(0));      // Time is calculated using time of emmision (TOF correction)
 				double secondPhotonArr= NormalizeTime(PrimaryHits.at(1));
 				double thirdPhotonArr = NormalizeTime(PrimaryHits.at(2));
 
@@ -81,10 +82,15 @@ int Analysis(){
 				vector<double> energy{E1, E2, E3};
 
 				if(fabs(PrimaryHits.at(0)->getPosZ())<23. && fabs(PrimaryHits.at(1)->getPosZ())<23. && fabs(PrimaryHits.at(2)->getPosZ())<23.){
-					if(energy[0]>0.0 and energy[1]>0.0 and energy[2]>0.0){ 
+
+					if(energy[0]>energy_threshold and energy[1]>energy_threshold and energy[2]>energy_threshold){
+
 						if(CalcDistanceOfSurfaceAndZero(PrimaryHits.at(0), PrimaryHits.at(1), PrimaryHits.at(2))< 5.){
+
 							if(TMath::Abs(firstPhotonArr-thirdPhotonArr)<1.5){
+
 								if(thetasOrd.at(0) + thetasOrd.at(1) >180) {
+
 									SumVsDiff.Fill(thetasOrd.at(0) + thetasOrd.at(1), thetasOrd.at(1) - thetasOrd.at(0));
                 					ThetaVsTheta.Fill(thetasNord.at(0), thetasNord.at(1));
 								}
@@ -92,7 +98,7 @@ int Analysis(){
 						}
 					}
 				}
-				 
+
 				e1.Fill(E1);
 				e2.Fill(E2);
 				e3.Fill(E3);
@@ -100,9 +106,10 @@ int Analysis(){
             	counter++;
             	outputTree.Fill();
 
-			}PrimaryHits.clear();
+			}
+            PrimaryHits.clear();
       	}
-	
+
 	}
 
     input_file.Close();
@@ -117,21 +124,22 @@ int Analysis(){
 	}
     return 0;
 }
-double CalcDistanceOfSurfaceAndZero( double Hit1, double Hit2, double Hit3 )
+double CalcDistanceOfSurfaceAndZero( JPetGeantScinHits* Hit1, JPetGeantScinHits* Hit2, JPetGeantScinHits* Hit3 )
 {
-	TVector3 vec1( Hit2.getPosX() - Hit1.getPosX(), Hit2.getPosY() - Hit1.getPosY(), Hit2.getPosZ() - Hit1.getPosZ() );
-	TVector3 vec2( Hit3.getPosX() - Hit2.getPosX(), Hit3.getPosY() - Hit2.getPosY(), Hit3.getPosZ() - Hit2.getPosZ() );
+
+	TVector3 vec1 = Hit2->getHitPosition() - Hit1->getHitPosition();
+	TVector3 vec2 = Hit3->getHitPosition() - Hit2->getHitPosition();
 	TVector3 crossProd  = vec1.Cross(vec2);
-	double Dcoeef = -crossProd(0)*Hit2.getPosX()-crossProd(1)*Hit2.getPosY() -crossProd(2)*Hit2.getPosZ();
+	double Dcoeef = crossProd.Dot(Hit2);
 	double distanceFromZero = fabs(Dcoeef) / crossProd.Mag();
 	return distanceFromZero;
 }
 //Hit normalize time
 //
-double  NormalizeTime( double Hit1 )
+double  NormalizeTime( JPetGeantScinHits* Hit1 )
 {
-	    TVector3 vec1( Hit1.getPosX(), Hit1.getPosY(), Hit1.getPosZ() );
+	    TVector3 vec1 = Hit1->getHitPosition();
 	    double Length0 = vec1.Mag();
-	    
-	    return Hit1.getTime()/1000 - (Length0)/29.979246;
+
+	    return Hit1.getTime()/1000.0 - (Length0)/29.979246;
 }
